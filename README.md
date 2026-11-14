@@ -34,3 +34,7 @@ Windows/Linux: the tool is built and tested on macOS. The core should work elsew
 ## More
 
 Technical details, command-line usage, matching rules, genre confidence and safety guarantees: [docs/DETAILS.md](docs/DETAILS.md). Run the tests with `.venv/bin/python -m unittest discover -s tests`.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
