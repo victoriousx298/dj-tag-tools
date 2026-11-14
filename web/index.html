@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DJ Tag Tools</title>
+<style>
+  :root { --bg:#f6f6f4; --card:#fff; --fg:#1d1d1b; --muted:#6b6b66; --line:#e1e1dc; --accent:#2f5bea;
+          --ok:#1d7a46; --okbg:#e3f4ea; --warn:#8a5a00; --warnbg:#fdf0d5; --bad:#b3261e; --badbg:#fbe4e2; --cust:#5b3fc4; --custbg:#ece7fb; --keep:#1c5fa8; --keepbg:#e1eefb; --gray:#5f6672; --graybg:#eceef1; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141413; --card:#1e1e1c; --fg:#ecece8; --muted:#9a9a93; --line:#33332f; --accent:#7c9bff;
+            --ok:#6fd49b; --okbg:#173326; --warn:#f0c15c; --warnbg:#3a2e12; --bad:#ff8a80; --badbg:#3d1c1a; --cust:#b7a4ff; --custbg:#2b2447; --keep:#7db4f0; --keepbg:#16293d; --gray:#a3a9b3; --graybg:#272a30; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  main { max-width:1200px; margin:0 auto; padding:28px 20px 90px; }
+  h1 { font-size:22px; margin:0 0 4px; } .sub { color:var(--muted); margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .tabs { display:flex; gap:6px; margin-bottom:14px; }
+  .tab { border-radius:8px 8px 0 0; padding:7px 14px; border:1px solid var(--line); background:var(--bg); cursor:pointer; }
+  .tab.on { background:var(--card); border-bottom-color:var(--card); font-weight:600; }
+  .drop { border:2px dashed var(--line); border-radius:10px; padding:26px; text-align:center; cursor:pointer; color:var(--muted); }
+  .drop.over { border-color:var(--accent); color:var(--fg); } .drop b { color:var(--fg); }
+  select, input[type=search], input[type=text] { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); }
+  select { min-width:340px; max-width:100%; }
+  .opts { display:grid; gap:10px; margin-top:16px; }
+  label.opt { display:flex; gap:10px; align-items:flex-start; cursor:pointer; }
+  label.opt small { display:block; color:var(--muted); } .sub-opt { margin-left:28px; }
+  button { font:inherit; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); padding:9px 16px; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .bar { height:8px; background:var(--line); border-radius:4px; overflow:hidden; margin:10px 0 6px; }
+  .bar > div { height:100%; background:var(--accent); width:0; transition:width .3s; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .chip { padding:4px 10px; border-radius:999px; background:var(--bg); border:1px solid var(--line); font-size:13px; }
+  .tools { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th { text-align:left; font-weight:600; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid var(--line); padding:6px 8px; }
+  td { padding:9px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  td.n { color:var(--muted); width:34px; }
+  .track b { display:block; } .track span, .muted { color:var(--muted); font-size:13px; }
+  .badge { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; margin:2px 4px 2px 0; }
+  .ok { background:var(--okbg); color:var(--ok); } .failed { background:var(--badbg); color:var(--bad); }
+  .skip { color:var(--muted); }
+  /* genre cards */
+  .cards { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .gc { border:1.5px solid var(--line); border-radius:8px; padding:3px 9px; font-size:13px; cursor:pointer; user-select:none; background:var(--card); color:var(--fg); }
+  .gc small { opacity:.7; margin-left:4px; }
+  .gc.high { border-color:var(--ok); } .gc.high.on { background:var(--okbg); color:var(--ok); }
+  .gc.medium { border-color:var(--warn); border-style:dashed; } .gc.medium.on { background:var(--warnbg); color:var(--warn); border-style:solid; }
+  .gc.custom { border-color:var(--cust); } .gc.custom.on { background:var(--custbg); color:var(--cust); }
+  .gc:not(.on) { opacity:.6; } .gc.locked { cursor:default; }
+  .gc.on::before { content:"✓ "; }
+  .gc.dragging { opacity:.35; } .gc.dropt { box-shadow:-3px 0 0 var(--accent); }
+  .addg { width:130px; padding:3px 8px; font-size:13px; }
+  .legend { color:var(--muted); font-size:12.5px; margin:0 0 10px; }
+  .diff { font-size:13px; margin:2px 0; } .diff del { color:var(--bad); } .diff ins { color:var(--ok); text-decoration:none; }
+  .apply { position:sticky; bottom:12px; display:flex; gap:14px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+           background:var(--card); border:1px solid var(--accent); border-radius:12px; padding:12px 16px; box-shadow:0 6px 24px rgba(0,0,0,.15); }
+  .err { background:var(--badbg); color:var(--bad); border-radius:8px; padding:10px 12px; margin-top:12px; white-space:pre-wrap; }
+  .note { background:var(--warnbg); color:var(--warn); border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:13px; }
+  .hidden { display:none !important; }
+  /* kept / replaced / new tags */
+  .tg { display:inline-block; padding:1px 8px; border-radius:6px; font-size:13px; margin:1px 4px 1px 0; border:1.5px solid transparent; }
+  .tg.kept { background:var(--graybg); color:var(--gray); border-color:var(--gray); }
+  .tg.new { background:var(--keepbg); color:var(--keep); border-color:var(--keep); }
+  .tg.na { background:#fff; color:#555; border-color:#ccc; }
+  .tg.good { background:var(--okbg); color:var(--ok); border-color:var(--ok); }
+  .tg.replaced { background:var(--warnbg); color:var(--warn); border-color:var(--warn); }
+  .tg.bad { background:var(--badbg); color:var(--bad); border-color:var(--bad); }
+  .tg.old { color:var(--muted); text-decoration:line-through; border-color:var(--line); }
+  .tg.old.cleared { color:var(--warn); border:1.5px dashed var(--warn); background:transparent; }
+  .tg.click { cursor:pointer; } .tg.click:hover { filter:brightness(.92); }
+  .tg.picked { background:var(--warnbg); border-style:solid; }
+  .pen { border:0; background:transparent; cursor:pointer; color:var(--muted); font-size:13px; padding:0 3px; }
+  .pen:hover { color:var(--fg); }
+  .editin { width:70px; padding:1px 6px; font-size:13px; }
+  .gc.kept { border-color:var(--gray); } .gc.kept.on { background:var(--graybg); color:var(--gray); }
+  .tg.mb { background:transparent; color:var(--muted); border:1.5px dashed var(--line); }
+  .tg.mb.same { color:var(--ok); border-color:var(--ok); }
+  .tg.mb.diff { color:var(--warn); border-color:var(--warn); }
+  .tag-label { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin-right:4px; }
+  .mbrow { margin-top:3px; }
+  td.fit { white-space:nowrap; width:1%; }   /* BPM and Year: just wide enough for checkbox + chips on one line */
+  /* audio player */
+  .player { position:sticky; top:0; z-index:5; display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:var(--card);
+            border:1px solid var(--line); border-radius:12px; padding:8px 12px; margin-bottom:12px; box-shadow:0 4px 16px rgba(0,0,0,.1); }
+  .player button { padding:5px 11px; }
+  .player .np { flex:1 1 160px; min-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:13px; }
+  .player input[type=range] { flex:2 1 220px; min-width:140px; }
+  .player .time { font-variant-numeric:tabular-nums; font-size:12.5px; color:var(--muted); min-width:84px; text-align:right; }
+  .player .keys { flex-basis:100%; font-size:11.5px; color:var(--muted); }
+  button.play { padding:0 7px; font-size:12px; line-height:22px; margin-right:6px; border-radius:50%; }
+  button.play.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  tr.flag td { background:color-mix(in srgb, var(--warn) 9%, transparent); } tr.flag td:first-child { box-shadow:inset 4px 0 0 var(--warn); }
+  .flagb { display:inline-block; margin-left:6px; padding:0 7px; border-radius:6px; background:var(--warnbg); color:var(--warn); border:1px solid var(--warn); font-size:12px; font-style:normal; font-weight:600; }
+  tr.playing td { background:var(--keepbg); }
+</style>
+</head>
+<body>
+<main>
+  <nav style="display:flex;gap:6px;margin-bottom:18px"><a href="/" style="padding:7px 14px;border-radius:8px;border:1px solid var(--line);color:var(--fg);text-decoration:none">Import</a><a href="/bpm" style="padding:7px 14px;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;text-decoration:none">BPM &amp; Fixes</a><a href="/setup" style="margin-left:auto;padding:7px 14px;border-radius:8px;border:1px solid var(--line);color:var(--fg);text-decoration:none">Setup</a></nav>
+  <h1>DJ Tag Tools</h1>
+  <p class="sub">Copy Rekordbox BPM, years and MusicBrainz genres into your MP3 tags. You always see a preview first; nothing changes until you press “Write changes”.</p>
+
+  <div class="card">
+    <div class="tabs"><div class="tab on" id="tabFile">iTunes playlist file</div><div class="tab" id="tabRb">Rekordbox playlist</div></div>
+    <div id="paneFile">
+      <div class="drop" id="drop"><b id="fileLabel">Drop an iTunes playlist (.txt) here</b><br>or click to choose a file</div>
+      <input type="file" id="file" accept=".txt,text/plain" class="hidden">
+    </div>
+    <div id="paneRb" class="hidden">
+      <select id="rbSelect"><option value="">Loading playlists…</option></select>
+      <button id="rbReload">Refresh</button>
+      <p class="muted" style="margin:8px 0 0">Read straight from your Rekordbox database (from a temporary copy; Rekordbox can stay open). Smart playlists and folders are not listed.</p>
+    </div>
+
+    <div class="opts">
+      <label class="opt"><input type="checkbox" id="optBpm" checked>
+        <span>BPM from Rekordbox <small>Analysed BPM, rounded to 1 decimal, matched by exact file path.</small></span></label>
+      <label class="opt sub-opt"><input type="checkbox" id="optOverwrite"><span>Also replace BPM tags that already have a value</span></label>
+      <label class="opt"><input type="checkbox" id="optYear" checked>
+        <span>Year <small>Fills empty years, replaces or clears 1970 (cleared if MusicBrainz has no year). Other years only change if you edit them (✎). Source: always MusicBrainz (earliest release of the exact recording), never Rekordbox.</small></span></label>
+      <label class="opt"><input type="checkbox" id="optGenre" checked>
+        <span>Genres from MusicBrainz <small>Fills empty genre tags; existing ones can be edited in the table. High-confidence genres are pre-selected; if there are none, the best medium one is. Other medium ones are offered for you to click. About 2–3 seconds per track.</small></span></label>
+      <label class="opt"><input type="checkbox" id="optQuality">
+        <span>Audio quality analysis <small>Measures each track's frequency cutoff in the background (read-only, like a Spek spectrogram). Turn off to skip the Quality column.</small></span></label>
+      <label class="opt"><input type="checkbox" id="optCleanup">
+        <span>Tag cleanup (optional) <small>Removes download junk such as “SpotiDownloader.com - ” from artist/title/album (bitrate info like “(128kbps)” is left alone), tidies spaces, and fills a missing artist/title from an “Artist - Title” file name. Every change is shown and can be unticked.</small></span></label>
+    </div>
+    <div class="note hidden" id="cfgNote" style="margin-top:14px"></div>
+    <p style="margin:16px 0 0"><button class="primary" id="run" disabled>Run (preview only)</button></p>
+    <div id="progress" class="hidden"><div class="bar"><div id="barFill"></div></div><span class="muted" id="progressText"></span></div>
+    <div class="err hidden" id="error"></div>
+  </div>
+
+  <div id="results" class="hidden">
+    <div class="player" id="player">
+      <button id="pPrev" title="Previous track (P)">⏮</button>
+      <button id="pBack" title="Back 30 s (←), 5 s with Shift">−30s</button>
+      <button id="pPlay" class="primary" title="Play / pause (Space)">▶</button>
+      <button id="pFwd" title="Forward 30 s (→), 5 s with Shift">+30s</button>
+      <button id="pNext" title="Next track (N)">⏭</button>
+      <span class="np" id="npTitle">Press ▶ on a track to preview it</span>
+      <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="Seek">
+      <span class="time" id="npTime">0:00 / 0:00</span>
+      <span class="keys">Keys: Space play/pause · ←/→ ±30 s (Shift ±5 s) · N next · P previous · 0–9 jump to 0–90 %</span>
+      <audio id="audio" preload="metadata"></audio>
+    </div>
+    <div class="card">
+      <div class="chips" id="chips"></div>
+      <p class="legend" id="legend"></p>
+      <div class="tools">
+        <input type="search" id="search" placeholder="Filter by artist, title or genre">
+        <label><input type="checkbox" id="onlyChanges"> Only tracks with something to do</label>
+        <button id="csv">Download CSV</button>
+        <span class="muted" id="qNote"></span>
+      </div>
+      <table><thead><tr><th>#</th><th>Track</th><th data-col="quality" title="Frequency cutoff of the audio, like read from a Spek spectrogram. Low = poor-quality source.">Quality</th><th data-col="bpm">BPM</th><th data-col="year">Year</th><th data-col="genre">Genres</th><th data-col="cleanup">Cleanup</th></tr></thead><tbody id="rows"></tbody></table>
+    </div>
+    <div class="apply" id="applyBar"><span id="applyText"></span><button class="primary" id="apply">Write changes</button></div>
+  </div>
+</main>
+<datalist id="genreList"></datalist>
+
+<script>
+const $ = id => document.getElementById(id);
+const H = {"X-DJ-Tools": "1"};
+let file = null, job = null, data = null, source = "file";
+// user selections live here (not in the DOM) so re-rendering never loses them
+let S = {bpm: new Set(), year: new Set(), cleanup: {}, cards: {}, bpmSet: {}, yearSet: {}};
+
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) { if (k === "class") e.className = v; else if (k === "title") e.title = v; else e[k] = v; }
+  for (const k of kids) if (k != null && k !== false) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+}
+const put = (parent, ...kids) => { kids.forEach(k => { if (k != null && k !== false) parent.append(k); }); return parent; };
+const badge = (txt, cls, title) => el("span", {class: "badge " + cls, title: title || ""}, txt);
+const resultBadge = res => res ? (res === "ok" ? badge("written ✓", "ok") : badge("failed", "failed", res)) : null;
+
+/* ---- source tabs ---- */
+function setSource(s) {
+  source = s;
+  $("tabFile").classList.toggle("on", s === "file"); $("tabRb").classList.toggle("on", s === "rb");
+  $("paneFile").classList.toggle("hidden", s !== "file"); $("paneRb").classList.toggle("hidden", s !== "rb");
+  if (s === "rb" && !$("rbSelect").dataset.loaded) loadPlaylists();
+  updateRun();
+}
+$("tabFile").onclick = () => setSource("file"); $("tabRb").onclick = () => setSource("rb");
+async function loadPlaylists() {
+  const sel = $("rbSelect"); sel.replaceChildren(el("option", {value: ""}, "Loading playlists…"));
+  try {
+    const r = await fetch("/api/playlists"); const j = await r.json(); if (!r.ok) throw new Error(j.error);
+    sel.replaceChildren(el("option", {value: ""}, "Choose a playlist…"),
+      ...j.playlists.map(p => el("option", {value: p.id, "data-name": p.name}, `${p.path}  (${p.count} tracks)`)));
+    sel.dataset.loaded = "1";
+  } catch (e) { sel.replaceChildren(el("option", {value: ""}, "Could not read Rekordbox")); showError(e.message); }
+}
+$("rbReload").onclick = loadPlaylists; $("rbSelect").onchange = updateRun;
+
+/* ---- file selection / options ---- */
+function setFile(f) { file = f; $("fileLabel").textContent = f ? f.name : "Drop an iTunes playlist (.txt) here"; updateRun(); }
+const anyOpt = () => ["optBpm", "optYear", "optGenre", "optCleanup"].some(i => $(i).checked);
+function updateRun() { $("run").disabled = !(anyOpt() && (source === "file" ? file : $("rbSelect").value)); }
+$("drop").onclick = () => $("file").click();
+$("file").onchange = e => setFile(e.target.files[0] || null);
+["dragover","dragenter"].forEach(t => $("drop").addEventListener(t, e => { e.preventDefault(); $("drop").classList.add("over"); }));
+["dragleave","drop"].forEach(t => $("drop").addEventListener(t, e => { e.preventDefault(); $("drop").classList.remove("over"); }));
+$("drop").addEventListener("drop", e => { if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+["optBpm","optYear","optGenre","optCleanup"].forEach(i => $(i).onchange = () => { $("optOverwrite").disabled = !$("optBpm").checked; updateRun(); });
+
+fetch("/api/config").then(r => r.json()).then(c => {
+  const notes = [];
+  if (!c.db_exists) notes.push("Rekordbox database not found at " + c.db + ". Set it on the Setup page.");
+  if (!c.contact_set) notes.push("No MusicBrainz contact set (optional, see README).");
+  if (notes.length) { $("cfgNote").textContent = notes.join(" "); $("cfgNote").classList.remove("hidden"); }
+}).catch(() => {});
+fetch("/api/genres").then(r => r.json()).then(j => $("genreList").replaceChildren(...j.genres.map(g => el("option", {value: g})))).catch(() => {});
+
+/* ---- run preview ---- */
+function showError(msg) { $("error").textContent = msg; $("error").classList.toggle("hidden", !msg); }
+$("run").onclick = async () => {
+  showError(""); $("results").classList.add("hidden"); data = null;
+  S = {bpm: new Set(), year: new Set(), cleanup: {}, cards: {}, bpmSet: {}, yearSet: {}};
+  $("run").disabled = true; $("progress").classList.remove("hidden"); $("barFill").style.width = "0"; $("progressText").textContent = "Starting…";
+  const opt = $("rbSelect").selectedOptions[0];
+  const q = new URLSearchParams({bpm: +$("optBpm").checked, year: +$("optYear").checked, genre: +$("optGenre").checked, cleanup: +$("optCleanup").checked, quality: +$("optQuality").checked,
+                                 overwrite: +($("optBpm").checked && $("optOverwrite").checked),
+                                 name: source === "file" ? file.name : (opt.dataset.name || "rekordbox")});
+  if (source === "rb") q.set("playlist", $("rbSelect").value);
+  try {
+    const r = await fetch("/api/preview?" + q, {method: "POST", headers: H, body: source === "file" ? await file.arrayBuffer() : new ArrayBuffer(0)});
+    const j = await r.json(); if (!r.ok) throw new Error(j.error);
+    job = j.id; poll();
+  } catch (e) { showError(e.message); updateRun(); $("progress").classList.add("hidden"); }
+};
+
+async function poll() {
+  const j = await (await fetch("/api/job?id=" + job)).json();
+  $("progressText").textContent = j.message + (j.total ? ` (${j.done}/${j.total})` : "");
+  $("barFill").style.width = j.total ? (100 * j.done / j.total) + "%" : "5%";
+  if (j.state === "error") { showError(j.error); updateRun(); $("progress").classList.add("hidden"); return; }
+  if (["ready", "applying", "done"].includes(j.state)) {
+    const prev = data, first = !prev; data = j; if (first) initSelections();
+    if (first || prev.state !== j.state || j.state === "applying") render(); else updateQuality();   // no re-render: it would wipe typing in the genre boxes
+    if (j.state !== "applying") { updateRun(); $("progress").classList.add("hidden"); if (!j.q_running) { updateQuality(); return; } }
+  }
+  setTimeout(poll, j.state === "applying" ? 500 : j.q_running ? 1500 : 800);
+}
+
+/* ---- selections ---- */
+function initSelections() {
+  for (const r of data.rows) {
+    if (r.bpm && r.bpm.action === "UPDATE") S.bpm.add(r.index);
+    if (r.year && r.year.action === "WRITE") S.year.add(r.index);
+    if (r.cleanup && r.cleanup.changes.length) S.cleanup[r.index] = new Set(r.cleanup.changes.map(c => c.field));
+    if (r.genre && r.genre.editable && r.genre.existing) {
+      const have = r.genre.existing.split(",").map(x => x.trim()).filter(Boolean), low = have.map(x => x.toLowerCase());
+      S.cards[r.index] = [...have.map(n => ({name: n, kind: "kept", votes: 0, on: true})),
+                          ...[...r.genre.high, ...r.genre.medium].filter(g => !low.includes(g.genre.toLowerCase()))
+                            .map(g => ({name: g.genre, kind: g.votes !== undefined && r.genre.high.includes(g) ? "high" : "medium", votes: g.votes, on: false}))];
+    } else if (r.genre && r.genre.editable)
+      S.cards[r.index] = [...r.genre.high.map(g => ({name: g.genre, kind: "high", votes: g.votes, on: true})),
+                          ...r.genre.medium.map(g => ({name: g.genre, kind: "medium", votes: g.votes, on: g.on}))];
+  }
+}
+const onCount = idx => (S.cards[idx] || []).filter(c => c.on).length;
+
+/* ---- render ---- */
+function render() {
+  $("results").classList.remove("hidden");
+  const rows = data.rows, W = data.want, locked = data.state !== "ready";
+  document.querySelectorAll("th[data-col]").forEach(th => th.classList.toggle("hidden", !W[th.dataset.col]));
+  const cnt = f => rows.filter(f).length, chips = [["Tracks", rows.length]];
+  if (W.bpm) chips.push(["Matched in Rekordbox", cnt(r => r.bpm.match === "matched")], ["BPM to write", cnt(r => r.bpm.action === "UPDATE")]);
+  if (W.year) chips.push(["Years to write", cnt(r => r.year.action === "WRITE")]);
+  if (W.genre) chips.push(["Genre already set", cnt(r => r.genre.existing)], ["With high-confidence genres", cnt(r => r.genre.high.length && r.genre.editable && !r.genre.existing)],
+                          ["Only a medium genre", cnt(r => !r.genre.high.length && r.genre.medium.length && r.genre.editable && !r.genre.existing)]);
+  if (W.cleanup) chips.push(["Tag fixes", cnt(r => r.cleanup.changes.length)]);
+  $("chips").replaceChildren(...chips.map(([k, v]) => el("span", {class: "chip"}, k + ": ", el("b", {}, v))));
+  $("legend").replaceChildren(...(W.genre || W.year || W.bpm ? [tg("kept", "gray"), " existing tag stays  ", tg("replaced", "amber"), " existing tag replaced  ", tg("new", "blue"), " empty tag filled  ",
+    tg("mb same", "green dashed"), " tag confirmed by MusicBrainz / Rekordbox  ", tg("na", "N/A"), " nothing found  ", "✎ edit a tag, click an amber Rekordbox BPM to use it.  ", tg("mb diff", "amber dashed"), " source differs (shown only, never written).  "] : []),
+    document.createTextNode(W.genre ? `Genre cards: gray = your current tag (click to remove), green = high confidence (pre-selected), dashed amber = medium (the best one is pre-selected when there is no high one; click others to add), purple = your own. Click any card to select or deselect it, up to ${data.max_genres} per track.` : ""));
+
+  const needle = $("search").value.trim().toLowerCase(), only = $("onlyChanges").checked, body = $("rows"); body.replaceChildren();
+  visible = [];
+  for (const r of rows) {
+    const todo = (r.bpm && (r.bpm.action === "UPDATE" || r.bpm.result)) || (r.year && (r.year.action === "WRITE" || r.year.result)) ||
+                 (r.genre && ((r.genre.editable && !r.genre.existing) || r.genre.result)) || (r.cleanup && (r.cleanup.changes.length));
+    if (only && !todo) continue;
+    const gtext = r.genre ? [...r.genre.high, ...r.genre.medium].map(g => g.genre).join(" ") : "";
+    if (needle && ![r.artist, r.title, gtext].join(" ").toLowerCase().includes(needle)) continue;
+    const play = r.path ? el("button", {class: "play", title: "Preview this track"}, "▶") : null;
+    if (play) { play.dataset.row = r.index; play.onclick = () => playRow(r.index); visible.push(r.index); }
+    const tr = el("tr", {}, el("td", {class: "n"}, r.index), el("td", {class: "track"}, el("b", {}, play, r.title || "(untitled)"), el("span", {}, r.artist || "")));
+    tr.dataset.row = r.index;
+    const fl = flagReasons(r.ext, r.seconds);   // over 10 minutes or not an mp3
+    if (fl.length) { tr.classList.add("flag"); tr.children[1].append(el("em", {class: "flagb", title: "Check this track: " + fl.join(", ")}, "⚠ " + fl.join(" · "))); }
+    if (W.quality) { const qtd = el("td", {class: "q"}); qtd.dataset.row = r.index; tr.children[1].after(qtd); fillQuality(qtd, r); }
+    if (W.bpm) tr.append(el("td", {class: "fit"}, bpmCell(r, locked)));
+    if (W.year) tr.append(el("td", {class: "fit"}, yearCell(r, locked)));
+    if (W.genre) tr.append(el("td", {}, genreCell(r, locked)));
+    if (W.cleanup) tr.append(el("td", {}, cleanupCell(r, locked)));
+    body.append(tr);
+  }
+  if (!body.children.length) body.append(el("tr", {}, el("td", {colSpan: 7, class: "muted"}, "Nothing to show with these filters.")));
+  markPlaying();
+  updateApply();
+  updateQuality();
+}
+
+// Frequency cutoff: ≥20 kHz fine (green), 18–20 amber, below 18 kHz red (typical of 128 kbps or upsampled files)
+function fillQuality(td, r) {
+  td.replaceChildren();
+  const q = r.quality;
+  if (!r.path) return;
+  if (!q) { td.append(el("span", {class: "muted"}, data.q_running ? "…" : "–")); return; }
+  if (q.error) { td.append(el("span", {class: "muted", title: q.error}, "n/a")); return; }
+  const cls = q.khz >= 20 ? "good" : q.khz >= 18 ? "replaced" : "bad";
+  td.append(tg(cls, q.label, "Audio content stops at about " + q.label + (cls === "bad" ? " — low-quality or transcoded" : "")));
+}
+function updateQuality() {
+  const byRow = new Map(data.rows.map(r => [r.index, r]));
+  document.querySelectorAll("#rows td.q").forEach(td => fillQuality(td, byRow.get(+td.dataset.row)));
+  $("qNote").textContent = data.q_running ? `Analysing audio quality… ${data.q_done}/${data.q_total}` : "";
+}
+
+const tg = (cls, text, title) => el("span", {class: "tg " + cls, title: title || ""}, text);
+const yr4 = s => (String(s || "").match(/\d{4}/) || [""])[0];
+
+// small pencil next to an existing tag: click, type a value, Enter. `set(value)` stores it, "" is allowed when allowEmpty.
+function pencil(r, locked, current, set, allowEmpty) {
+  if (locked || !r.path) return "";
+  const b = el("button", {class: "pen", title: "Edit this tag"}, "✎");
+  b.onclick = () => {
+    const i = el("input", {type: "text", class: "editin", value: current || ""});
+    i.onkeydown = e => {
+      if (e.key === "Escape") render();
+      if (e.key !== "Enter") return;
+      e.preventDefault(); const v = i.value.trim();
+      if (!v && !allowEmpty) return render();
+      set(v); render();
+    };
+    b.replaceWith(i); i.focus(); i.select();
+  };
+  return b;
+}
+const pendingBox = (checked, onoff) => { const c = el("input", {type: "checkbox", checked}); c.onchange = () => onoff(c.checked); return c; };
+
+// Year: new (was empty) = green, replaced (was 1970) = amber, kept (real year stays) = blue.
+// Confirmed by MusicBrainz = only the green dashed chip. Cleared 1970 = only the struck-through amber dashed chip.
+function flagReasons(ext, secs) {
+  const out = [];
+  if (secs && secs > 600) out.push(`${Math.floor(secs / 60)}:${String(Math.round(secs % 60)).padStart(2, "0")} long`);
+  if (ext && ext !== ".mp3") out.push(ext.slice(1).toUpperCase() + " not mp3");
+  return out;
+}
+function yearCell(r, locked) {
+  const x = r.year, out = el("div"), writable = x.action === "WRITE";
+  const edit = S.yearSet[r.index];
+  if (edit !== undefined && !x.result) {
+    put(out, pendingBox(true, () => { delete S.yearSet[r.index]; render(); }), " ");
+    if (x.existing) put(out, tg("old", x.existing, "current tag"), "→ ");
+    put(out, edit ? tg("replaced", edit, "edited by you") : tg("old cleared", x.existing || "", "year will be cleared"));
+    return out;
+  }
+  if (writable || x.result) {
+    const c = el("input", {type: "checkbox", checked: S.year.has(r.index) || !!x.result, disabled: locked});
+    c.onchange = () => { c.checked ? S.year.add(r.index) : S.year.delete(r.index); updateApply(); };
+    put(out, c, " ");
+    if (x.existing && !x.proposed) put(out, tg("old cleared", x.existing, "placeholder 1970 is removed (no MusicBrainz year)"));
+    else if (x.existing) put(out, tg("old", x.existing, "current tag"), "→ ", tg("replaced", x.proposed, "replaced (placeholder 1970)"));
+    else put(out, tg("new", x.proposed, "filled: the tag was empty"));
+    put(out, " ", resultBadge(x.result));
+    return out;
+  }
+  if (x.existing) {
+    const pen = pencil(r, locked, yr4(x.existing), v => { S.yearSet[r.index] = v; }, true);
+    if (x.proposed && yr4(x.existing) === String(x.proposed)) {
+      put(out, tg("mb same", x.proposed, "confirmed by MusicBrainz"), pen);
+      return out;
+    }
+    put(out, tg("kept", x.existing, "kept unless you edit it"), pen);
+    if (x.proposed) put(out, el("div", {class: "mbrow"}, tg("mb diff", x.proposed, "MusicBrainz says something else (not written)")));
+    return out;
+  }
+  put(out, tg("na", "N/A", x.detail || "no exact MusicBrainz match with a date"));
+  return out;
+}
+
+// BPM: same colour logic as year. new (tag empty) = green, replaced = amber, kept = blue;
+// the Rekordbox value for a kept tag is shown dashed: green if equal to the tag, amber if different (click it to use it).
+function bpmCell(r, locked) {
+  const x = r.bpm, out = el("div"), writable = x.action === "UPDATE";
+  const edit = S.bpmSet[r.index];
+  if (edit !== undefined && !x.result) {
+    put(out, pendingBox(true, () => { delete S.bpmSet[r.index]; render(); }), " ");
+    put(out, tg("old", x.existing, "current tag"), "→ ", tg("replaced", edit, edit === x.rb ? "Rekordbox BPM (click the checkbox to undo)" : "edited by you"));
+    return out;
+  }
+  if (writable || x.result) {
+    const c = el("input", {type: "checkbox", checked: S.bpm.has(r.index) || !!x.result, disabled: locked});
+    c.onchange = () => { c.checked ? S.bpm.add(r.index) : S.bpm.delete(r.index); updateApply(); };
+    put(out, c, " ");
+    if (x.existing) put(out, tg("old", x.existing, "current tag"), "→ ", tg("replaced", x.rb, "replaced with Rekordbox BPM"));
+    else put(out, tg("new", x.rb, "filled: the tag was empty"));
+    put(out, " ", resultBadge(x.result));
+    return out;
+  }
+  const na = /missing, zero or invalid/.test(x.detail || "");
+  if (x.existing) {
+    const pen = pencil(r, locked, x.existing, v => { if (/^\d+(\.\d+)?$/.test(v) && +v > 0) S.bpmSet[r.index] = v; }, false);
+    const same = x.rb && Math.abs(parseFloat(x.existing) - parseFloat(x.rb)) < 1;
+    if (same) { put(out, tg("mb same", x.existing, "confirmed: Rekordbox agrees"), pen); return out; }
+    put(out, tg("kept", x.existing, "kept unless you edit it"), pen);
+    if (na) put(out, tg("na", "N/A", "Rekordbox BPM missing, zero or invalid"));
+    else if (x.rb) {
+      const chip = tg("mb diff" + (locked ? "" : " click"), x.rb, locked ? "Rekordbox BPM" : "Rekordbox says something else: click to use it for the mp3 tag");
+      if (!locked) chip.onclick = () => { S.bpmSet[r.index] = x.rb; render(); };
+      put(out, el("div", {class: "mbrow"}, el("span", {class: "tag-label"}, "Rekordbox"), chip));
+    }
+    return out;
+  }
+  if (na) { put(out, tg("na", "N/A", "Rekordbox BPM missing, zero or invalid")); return out; }
+  put(out, el("span", {class: "skip"}, x.rb || "–"), " ", el("span", {class: "muted"}, x.detail));
+  return out;
+}
+
+function simpleCell(r, kind, locked, valueOf, set, extra) {
+  const x = r[kind], out = el("div"), writable = kind === "bpm" ? x.action === "UPDATE" : x.action === "WRITE";
+  if (writable || x.result) {
+    const c = el("input", {type: "checkbox", checked: set.has(r.index) || !!x.result, disabled: locked});
+    c.onchange = () => { c.checked ? set.add(r.index) : set.delete(r.index); updateApply(); };
+    put(out, c, " ", el("b", {}, valueOf(x)), el("span", {class: "muted"}, extra(x)), " ", resultBadge(x.result));
+  } else put(out, el("span", {class: "skip"}, valueOf(x) || "–"), " ", el("span", {class: "muted"}, x.detail));
+  return out;
+}
+
+function genreCell(r, locked) {
+  const g = r.genre, out = el("div");
+  if (g.result) {
+    put(out, el("span", {}, g.written), " ", resultBadge(g.result)); return out;
+  }
+  if (!g.editable) { put(out, el("span", {class: "muted"}, g.detail || "–")); return out; }
+  const cards = S.cards[r.index], box = el("div", {class: "cards"});
+  cards.forEach(c => {
+    const card = el("span", {class: `gc ${c.kind}${c.on ? " on" : ""}${locked ? " locked" : ""}`,
+                             title: c.kind === "kept" ? "current tag: click to remove it" : c.kind === "high" ? `high confidence, ${c.votes} votes` : c.kind === "medium" ? `medium confidence, ${c.votes} votes` : "added by you"},
+                    c.name, c.votes ? el("small", {}, c.votes) : null);
+    if (!locked) {   // drag a genre card onto another one to reorder; the tag is written in this order
+      card.draggable = true;
+      card.ondragstart = e => { e.dataTransfer.setData("text/plain", c.name); e.dataTransfer.effectAllowed = "move"; S.drag = {row: r.index, card: c}; card.classList.add("dragging"); };
+      card.ondragend = () => { S.drag = null; card.classList.remove("dragging"); };
+      card.ondragover = e => { if (S.drag && S.drag.row === r.index && S.drag.card !== c) { e.preventDefault(); card.classList.add("dropt"); } };
+      card.ondragleave = () => card.classList.remove("dropt");
+      card.ondrop = e => {
+        e.preventDefault(); const d = S.drag; if (!d || d.row !== r.index || d.card === c) return;
+        const from = cards.indexOf(d.card); cards.splice(from, 1); cards.splice(cards.indexOf(c), 0, d.card);   // dropped before the target
+        render();
+      };
+    }
+    card.onclick = () => {
+      if (locked) return;
+      if (!c.on && onCount(r.index) >= data.max_genres) { flash(`At most ${data.max_genres} genres per track.`); return; }
+      c.on = !c.on; render();
+    };
+    box.append(card);
+  });
+  if (!locked) {
+    const add = el("input", {type: "text", class: "addg", placeholder: "+ add genre", list: "genreList"});
+    add.ondragover = e => { if (S.drag && S.drag.row === r.index) e.preventDefault(); };   // drop on the box = move to the end
+    add.ondrop = e => { e.preventDefault(); const d = S.drag; if (!d || d.row !== r.index) return; cards.splice(cards.indexOf(d.card), 1); cards.push(d.card); render(); };
+    add.onkeydown = e => {
+      if (e.key !== "Enter") return; e.preventDefault();
+      const v = add.value.replace(/\s+/g, " ").trim(); if (!v) return;
+      const ex = cards.find(c => c.name.toLowerCase() === v.toLowerCase());
+      if (ex) { if (!ex.on && onCount(r.index) < data.max_genres) ex.on = true; }
+      else if (onCount(r.index) >= data.max_genres) { flash(`At most ${data.max_genres} genres per track.`); return; }
+      else cards.push({name: v, kind: "custom", votes: 0, on: true});
+      render();
+      const again = document.querySelector(`#rows tr[data-row="${r.index}"] .addg`); if (again) again.focus();   // add the next genre right away
+    };
+    box.append(add);
+  }
+  put(out, box);
+  if (g.ignored.length) put(out, el("div", {class: "muted", title: "Low-confidence candidates are not offered"}, "ignored (low): " + g.ignored.slice(0, 3).join(", ")));
+  return out;
+}
+
+function cleanupCell(r, locked) {
+  const c = r.cleanup, out = el("div");
+  if (!c.changes.length) { put(out, el("span", {class: "muted"}, c.detail || "nothing to clean")); return out; }
+  const sel = S.cleanup[r.index] || (S.cleanup[r.index] = new Set());
+  c.changes.forEach(ch => {
+    const cb = el("input", {type: "checkbox", checked: sel.has(ch.field) || (!!c.result && c.result === "ok"), disabled: locked});
+    cb.onchange = () => { cb.checked ? sel.add(ch.field) : sel.delete(ch.field); updateApply(); };
+    put(out, el("div", {class: "diff"}, cb, " ", el("span", {class: "muted"}, ch.field + ": "), el("del", {}, ch.old || "(empty)"), " → ", el("ins", {}, ch.new),
+               el("span", {class: "muted"}, `  [${ch.reason}]`)));
+  });
+  put(out, resultBadge(c.result));
+  return out;
+}
+
+let flashTimer; function flash(msg) { $("applyText").textContent = msg; clearTimeout(flashTimer); flashTimer = setTimeout(updateApply, 2200); }
+
+/* ---- apply bar ---- */
+function genreSelection() {
+  const o = {}, ex = {}; for (const r of (data ? data.rows : [])) if (r.genre && r.genre.existing) ex[r.index] = r.genre.existing.split(",").map(x => x.trim().toLowerCase()).filter(Boolean).join("|");
+  for (const [idx, cards] of Object.entries(S.cards)) {
+    const names = cards.filter(c => c.on).map(c => c.name);
+    if (!names.length || (idx in ex && names.map(n => n.toLowerCase()).join("|") === ex[idx])) continue;
+    o[idx] = names;
+  } return o;
+}
+function updateApply() {
+  if (!data) return;
+  const W = data.want, st = data.state;
+  const nb = W.bpm ? S.bpm.size + Object.keys(S.bpmSet).length : 0, ny = W.year ? S.year.size + Object.keys(S.yearSet).length : 0, ng = W.genre ? Object.keys(genreSelection()).length : 0,
+        nc = W.cleanup ? Object.values(S.cleanup).filter(s => s.size).length : 0;
+  $("apply").disabled = st !== "ready" || !(nb + ny + ng + nc);
+  $("apply").textContent = st === "applying" ? "Writing…" : st === "done" ? "Done" : "Write changes";
+  const parts = [W.bpm && `${nb} BPM`, W.year && `${ny} year`, W.genre && `${ng} genre`, W.cleanup && `${nc} cleanup`].filter(Boolean);
+  $("applyText").textContent = st === "done" ? `Finished. Backups of every changed file are in ${data.backup_dir}`
+    : st === "applying" ? data.message : (nb + ny + ng + nc) ? `Will write: ${parts.join(", ")} tag change(s). Each file is backed up first.` : "Nothing selected to write.";
+}
+["search", "onlyChanges"].forEach(i => $(i).oninput = () => data && render());
+
+$("apply").onclick = async () => {
+  if (!confirm("Write the selected tags into your MP3 files?\nEvery changed file is backed up first.")) return;
+  const cleanup = {}; for (const [k, v] of Object.entries(S.cleanup)) if (v.size) cleanup[k] = [...v];
+  const body = JSON.stringify({bpm: [...S.bpm], year: [...S.year], genre: genreSelection(), cleanup, bpm_set: S.bpmSet, year_set: S.yearSet});
+  const r = await fetch("/api/apply?id=" + job, {method: "POST", headers: {...H, "Content-Type": "application/json"}, body});
+  const j = await r.json(); if (!r.ok) { showError(j.error); return; }
+  showError(""); data.state = "applying"; updateApply(); $("progress").classList.remove("hidden"); poll();
+};
+
+/* ---- audio preview ---- */
+const A = $("audio"); let cur = null, visible = [], dragging = false;
+const fmt = s => isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}` : "0:00";
+function playRow(i) {
+  if (!data || !job) return;
+  if (cur === i) { A.paused ? A.play().catch(() => {}) : A.pause(); return; }
+  const r = data.rows.find(x => x.index === i); if (!r || !r.path) return;
+  cur = i; A.src = `/api/audio?id=${job}&row=${i}`; A.play().catch(() => {});
+  $("npTitle").textContent = `${r.artist ? r.artist + " – " : ""}${r.title || "(untitled)"}`;
+  markPlaying();
+}
+function markPlaying() {
+  document.querySelectorAll("#rows tr").forEach(tr => tr.classList.toggle("playing", +tr.dataset.row === cur));
+  document.querySelectorAll("button.play").forEach(b => { const on = +b.dataset.row === cur; b.classList.toggle("on", on); b.textContent = on && !A.paused ? "⏸" : "▶"; });
+  $("pPlay").textContent = A.paused ? "▶" : "⏸";
+}
+function step(d) {
+  const list = visible.length ? visible : (data ? data.rows.filter(r => r.path).map(r => r.index) : []);
+  let k = list.indexOf(cur); k = k < 0 ? (d > 0 ? 0 : list.length - 1) : k + d;
+  if (k >= 0 && k < list.length) playRow(list[k]);
+}
+function seek(dt) { if (cur !== null && isFinite(A.duration)) A.currentTime = Math.min(Math.max(A.currentTime + dt, 0), A.duration); }
+A.onplay = A.onpause = markPlaying;
+A.onended = () => step(1);
+A.onerror = () => { if (cur !== null) flash("Cannot play this file (missing or not readable)."); };
+A.ontimeupdate = A.onloadedmetadata = () => {
+  if (!dragging && A.duration) $("scrub").value = Math.round(A.currentTime / A.duration * 1000);
+  $("npTime").textContent = `${fmt(A.currentTime)} / ${fmt(A.duration)}`;
+};
+$("scrub").onpointerdown = () => dragging = true;
+$("scrub").onchange = () => dragging = false;
+$("scrub").oninput = e => { if (A.duration) A.currentTime = e.target.value / 1000 * A.duration; };
+$("scrub").onpointerup = () => dragging = false;
+$("pPlay").onclick = () => cur === null ? step(1) : playRow(cur);
+$("pPrev").onclick = () => step(-1); $("pNext").onclick = () => step(1);
+$("pBack").onclick = () => seek(-30); $("pFwd").onclick = () => seek(30);
+document.addEventListener("keydown", e => {
+  if (e.metaKey || e.ctrlKey || e.altKey || !data) return;
+  const t = e.target;
+  if (t.matches && t.matches("input[type=text],input[type=search],select,textarea")) return;
+  const k = e.key;
+  const acted = k === " " ? ($("pPlay").onclick(), true)
+    : k === "ArrowLeft" ? (seek(e.shiftKey ? -5 : -30), true)
+    : k === "ArrowRight" ? (seek(e.shiftKey ? 5 : 30), true)
+    : (k === "n" || k === "N") ? (step(1), true)
+    : (k === "p" || k === "P") ? (step(-1), true)
+    : /^[0-9]$/.test(k) && cur !== null && A.duration ? (A.currentTime = A.duration * (+k) / 10, true) : false;
+  if (acted) { e.preventDefault(); if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); }
+});
+
+/* ---- CSV ---- */
+$("csv").onclick = () => {
+  const esc = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+  const head = ["row", "artist", "title", "path", "rekordbox_bpm", "existing_bpm", "bpm_action", "bpm_result", "year", "year_source", "year_action", "year_result",
+                "cutoff_khz", "existing_genre", "high_genres", "medium_genres", "genre_result", "cleanup_changes", "cleanup_result"];
+  const lines = [head.map(esc).join(",")];
+  for (const r of data.rows) lines.push([r.index, r.artist, r.title, r.path, r.bpm?.rb, r.bpm?.existing, r.bpm ? r.bpm.action + " " + r.bpm.detail : "", r.bpm?.result,
+    r.year?.proposed, r.year?.source, r.year ? r.year.action + " " + r.year.detail : "", r.year?.result,
+    r.quality?.khz, r.genre?.existing, r.genre?.high.map(g => g.genre).join(", "), r.genre?.medium.map(g => g.genre).join(", "), r.genre?.result,
+    r.cleanup?.changes.map(c => `${c.field}: ${c.old} -> ${c.new}`).join(" | "), r.cleanup?.result].map(esc).join(","));
+  el("a", {href: URL.createObjectURL(new Blob([lines.join("\n")], {type: "text/csv"})), download: "dj-tag-tools-report.csv"}).click();
+};
+</script>
+<script src="/columns.js"></script>
+<script>DJColumns.init({table: document.querySelector("#rows").closest("table"), key: "bpm-fixes"});</script>
+</body>
+</html>

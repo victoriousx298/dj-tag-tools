@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DJ Tag Tools · Setup</title>
+<style>
+  :root { --bg:#f6f6f4; --card:#fff; --fg:#1d1d1b; --muted:#6b6b66; --line:#e1e1dc; --accent:#2f5bea; --ok:#1d7a46; --bad:#b3261e; --badbg:#fbe4e2; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141413; --card:#1e1e1c; --fg:#ecece8; --muted:#9a9a93; --line:#33332f; --accent:#7c9bff; --ok:#6fd49b; --bad:#ff8a80; --badbg:#3d1c1a; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:28px 20px 80px; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:16px; margin:0 0 6px; } .sub, .muted { color:var(--muted); }
+  .sub { margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+  label { display:block; font-weight:600; margin-bottom:2px; }
+  .hint { color:var(--muted); font-size:13px; margin:0 0 8px; }
+  input[type=text] { font:inherit; padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); width:100%; min-width:0; }
+  button { font:inherit; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); padding:8px 14px; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; padding:10px 20px; }
+  .row { display:flex; gap:8px; align-items:center; } .field { margin-bottom:18px; }
+  #err { background:var(--badbg); color:var(--bad); border-radius:8px; padding:8px 12px; margin-bottom:12px; }
+  .hidden { display:none !important; }
+  ol { margin:6px 0 0; padding-left:22px; } li { margin-bottom:6px; }
+  code { background:var(--line); padding:1px 5px; border-radius:4px; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Welcome to DJ Tag Tools</h1>
+  <p class="sub">Tidy up new tracks before they go into Rekordbox: convert WAV to MP3, fix artist / title tags and file names, fill in missing years, genres and BPM. Everything runs on your computer, and you always see a preview before any file is touched.</p>
+
+  <div class="card">
+    <h2>How it works</h2>
+    <ol>
+      <li><b>Import</b> (home page): pick a folder with new WAV / MP3 files, check the preview table (edit any cell you like), press <i>Apply</i>. Changed MP3s are backed up first.</li>
+      <li><b>BPM &amp; Fixes</b>: pick a Rekordbox playlist (or upload an iTunes / Rekordbox playlist TXT), tick what you want (BPM, year, genres, tag cleanup), preview, then <i>Write changes</i>.</li>
+      <li>Backups live in the <code>backups/</code> folder next to the tool and are deleted automatically after 30 days.</li>
+      <li>You can come back to this page any time via the <i>Setup</i> link at the top.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Your library</h2>
+    <div id="err" class="hidden"></div>
+
+    <div class="field">
+      <label for="folder">Music folder</label>
+      <p class="hint">Where your new tracks land (e.g. Downloads or your Music library). The Import page opens here first; you can still choose another folder there.</p>
+      <div class="row"><input type="text" id="folder" placeholder="/Users/you/Music"><button id="pickFolder">Browse…</button></div>
+    </div>
+
+    <div class="field">
+      <label for="db">Rekordbox database (master.db)</label>
+      <p class="hint" id="dbHint">Needed to list your Rekordbox playlists and read BPM. Leave empty if you don't use Rekordbox. Your database is only ever <b>read</b> (a copy is used); the tool never writes to it.</p>
+      <div class="row"><input type="text" id="db" placeholder="/Users/you/Library/Pioneer/rekordbox/master.db"><button id="pickDb">Browse…</button></div>
+    </div>
+
+    <div class="field">
+      <label for="contact">Your e-mail <span class="muted" style="font-weight:400">(optional)</span></label>
+      <p class="hint">Years and genres come from the free MusicBrainz database, which asks API users to identify themselves. It is only sent to MusicBrainz in the request header. Without it, lookups still work but may be refused.</p>
+      <input type="text" id="contact" placeholder="you@example.com">
+    </div>
+
+    <button class="primary" id="save">Save and start</button>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const post = (url, body) => fetch(url, {method:"POST", headers:{"Content-Type":"application/json","X-DJ-Tools":"1"}, body:JSON.stringify(body||{})}).then(async r => ({ok:r.ok, data:await r.json()}));
+const showErr = m => { $("err").textContent = m; $("err").classList.toggle("hidden", !m); };
+
+fetch("/api/setup").then(r => r.json()).then(s => {
+  $("folder").value = s.music_folder || "";
+  $("db").value = s.rekordbox_db || "";
+  $("contact").value = s.contact || "";
+  if (s.rekordbox_detected && !s.configured) $("dbHint").innerHTML += " <b style='color:var(--ok)'>Found automatically.</b>";
+  if (!s.rekordbox_detected && !s.rekordbox_db) $("dbHint").innerHTML += " <b>Not found automatically; use Browse…</b>";
+});
+
+async function pick(url, field) {
+  const {data} = await post(url, {start: $(field).value});
+  if (data.path) $(field).value = data.path.replace(/\/$/, "");
+  else showErr("No folder or file chosen (the Browse dialog only works on macOS; otherwise type the path).");
+}
+$("pickFolder").onclick = () => { showErr(""); pick("/api/setup/pick-folder", "folder"); };
+$("pickDb").onclick = () => { showErr(""); pick("/api/setup/pick-db", "db"); };
+$("save").onclick = async () => {
+  showErr("");
+  const {ok, data} = await post("/api/setup/save", {music_folder:$("folder").value, rekordbox_db:$("db").value, contact:$("contact").value});
+  if (ok) location.href = "/"; else showErr(data.error || "Could not save.");
+};
+</script>
+</body>
+</html>

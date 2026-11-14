@@ -1,0 +1,5 @@
+mutagen>=1.47
+pyrekordbox>=0.4.4      # only needed to read master.db (not for --xml)
+sqlcipher3-wheels>=0.5  # SQLCipher bindings used by pyrekordbox
+certifi
+send2trash

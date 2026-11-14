@@ -1,0 +1,12 @@
+.genre_cache.sqlite
+samples/
+__pycache__/
+.venv/
+*_backup_*/
+*_report.csv
+.musicbrainz_contact
+backups/
+.quality_cache.json
+settings.json
+settings.json.tmp
+.DS_Store
