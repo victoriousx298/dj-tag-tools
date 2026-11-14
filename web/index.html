@@ -51,6 +51,7 @@
   .gc.custom { border-color:var(--cust); } .gc.custom.on { background:var(--custbg); color:var(--cust); }
   .gc:not(.on) { opacity:.6; } .gc.locked { cursor:default; }
   .gc.on::before { content:"✓ "; }
+  .gc .gx { margin-left:6px; padding:0 3px; border-radius:4px; font-weight:bold; opacity:.7; } .gc .gx:hover { opacity:1; background:rgba(128,128,128,.3); }
   .gc.dragging { opacity:.35; } .gc.dropt { box-shadow:-3px 0 0 var(--accent); }
   .addg { width:130px; padding:3px 8px; font-size:13px; }
   .legend { color:var(--muted); font-size:12.5px; margin:0 0 10px; }
@@ -449,6 +450,11 @@ function genreCell(r, locked) {
     const card = el("span", {class: `gc ${c.kind}${c.on ? " on" : ""}${locked ? " locked" : ""}`,
                              title: c.kind === "kept" ? "current tag: click to remove it" : c.kind === "high" ? `high confidence, ${c.votes} votes` : c.kind === "medium" ? `medium confidence, ${c.votes} votes` : "added by you"},
                     c.name, c.votes ? el("small", {}, c.votes) : null);
+    if (!locked && c.kind === "custom") {   // genres you added yourself can be deleted, not just unselected
+      const x = el("span", {class: "gx", title: "delete this genre"}, "×");
+      x.onclick = e => { e.stopPropagation(); cards.splice(cards.indexOf(c), 1); render(); };
+      card.append(x);
+    }
     if (!locked) {   // drag a genre card onto another one to reorder; the tag is written in this order
       card.draggable = true;
       card.ondragstart = e => { e.dataTransfer.setData("text/plain", c.name); e.dataTransfer.effectAllowed = "move"; S.drag = {row: r.index, card: c}; card.classList.add("dragging"); };
