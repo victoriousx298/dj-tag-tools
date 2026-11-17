@@ -159,7 +159,7 @@
       </div>
       <table><thead><tr><th>#</th><th>Track</th><th data-col="quality" title="Frequency cutoff of the audio, like read from a Spek spectrogram. Low = poor-quality source.">Quality</th><th data-col="bpm">BPM</th><th data-col="year">Year</th><th data-col="genre">Genres</th><th data-col="cleanup">Cleanup</th></tr></thead><tbody id="rows"></tbody></table>
     </div>
-    <div class="apply" id="applyBar"><span id="applyText"></span><button class="primary" id="apply">Write changes</button></div>
+    <div class="apply" id="applyBar"><span id="applyText"></span><span><label style="margin-right:10px"><input type="checkbox" id="backup"> Make backup</label><button class="primary" id="apply">Write changes</button></span></div>
   </div>
 </main>
 <datalist id="genreList"></datalist>
@@ -528,15 +528,16 @@ function updateApply() {
   $("apply").disabled = st !== "ready" || !(nb + ny + ng + nc);
   $("apply").textContent = st === "applying" ? "Writing…" : st === "done" ? "Done" : "Write changes";
   const parts = [W.bpm && `${nb} BPM`, W.year && `${ny} year`, W.genre && `${ng} genre`, W.cleanup && `${nc} cleanup`].filter(Boolean);
-  $("applyText").textContent = st === "done" ? `Finished. Backups of every changed file are in ${data.backup_dir}`
-    : st === "applying" ? data.message : (nb + ny + ng + nc) ? `Will write: ${parts.join(", ")} tag change(s). Each file is backed up first.` : "Nothing selected to write.";
+  $("applyText").textContent = st === "done" ? (data.backup_dir ? `Finished. Backups of every changed file are in ${data.backup_dir}` : "Finished. No backup was made.")
+    : st === "applying" ? data.message : (nb + ny + ng + nc) ? `Will write: ${parts.join(", ")} tag change(s). ${$("backup").checked ? "Each file is backed up first." : "No backup will be made."}` : "Nothing selected to write.";
 }
+$("backup").onchange = updateApply;
 ["search", "onlyChanges"].forEach(i => $(i).oninput = () => data && render());
 
 $("apply").onclick = async () => {
-  if (!confirm("Write the selected tags into your MP3 files?\nEvery changed file is backed up first.")) return;
+  if (!confirm("Write the selected tags into your MP3 files?\n" + ($("backup").checked ? "Every changed file is backed up first." : "No backup will be made."))) return;
   const cleanup = {}; for (const [k, v] of Object.entries(S.cleanup)) if (v.size) cleanup[k] = [...v];
-  const body = JSON.stringify({bpm: [...S.bpm], year: [...S.year], genre: genreSelection(), cleanup, bpm_set: S.bpmSet, year_set: S.yearSet});
+  const body = JSON.stringify({backup: $("backup").checked, bpm: [...S.bpm], year: [...S.year], genre: genreSelection(), cleanup, bpm_set: S.bpmSet, year_set: S.yearSet});
   const r = await fetch("/api/apply?id=" + job, {method: "POST", headers: {...H, "Content-Type": "application/json"}, body});
   const j = await r.json(); if (!r.ok) { showError(j.error); return; }
   showError(""); data.state = "applying"; updateApply(); $("progress").classList.remove("hidden"); poll();

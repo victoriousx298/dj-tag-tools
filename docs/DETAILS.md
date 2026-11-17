@@ -93,7 +93,7 @@ reachable only from this Mac; requests from other websites are rejected).
    smart playlists and folders are not listed).
 2. **Tick what to do:** BPM, Year, Genres, and optionally Tag cleanup.
 3. **Run** shows a preview only. Adjust it: untick rows, click genre cards, add your own genres.
-4. **Write changes** backs up each file, writes, and verifies. Backups go to `backups/<playlist>_<timestamp>/{bpm,year,genre,cleanup}/`.
+4. **Write changes** (optionally backing up each file first via the "Make backup" checkbox, off by default), writes, and verifies. Backups go to `backups/<playlist>_<timestamp>/{bpm,year,genre,cleanup}/`.
 
 Changes can be written once per preview; run again for a new preview. "Download CSV" saves the table.
 

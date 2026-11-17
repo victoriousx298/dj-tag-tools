@@ -10,6 +10,7 @@ Files are matched by normalised absolute path only. No metadata guessing.
 """
 from __future__ import annotations
 
+import contextlib
 import argparse
 import csv
 import io
@@ -466,29 +467,35 @@ def make_backup_dir(base: Path) -> Path:
             n += 1
 
 
-def apply_writes(rows: list[Row], backup_dir: Path) -> tuple[int, int]:
+def apply_writes(rows: list[Row], backup_dir: Optional[Path]) -> tuple[int, int]:
     todo = [r for r in rows if r.action == "UPDATE"]
     if not todo:
         print("\nNothing to write.")
         return 0, 0
-    backup_dir = make_backup_dir(backup_dir)
-    print(f"\nBackups go to: {backup_dir}")
-    manifest = backup_dir / "manifest.csv"
+    if backup_dir is not None:
+        backup_dir = make_backup_dir(backup_dir)
+        print(f"\nBackups go to: {backup_dir}")
+        mf = (backup_dir / "manifest.csv").open("w", newline="", encoding="utf-8")
+    else:
+        print("\nNo backup (disabled).")
+        mf = contextlib.nullcontext()
     ok = failed = 0
-    with manifest.open("w", newline="", encoding="utf-8") as mf:
-        mw = csv.writer(mf)
-        mw.writerow(["backup_file", "original_path"])
+    with mf:
+        mw = csv.writer(mf) if backup_dir is not None else None
+        if mw:
+            mw.writerow(["backup_file", "original_path"])
         for n, r in enumerate(todo, 1):
             src = Path(r.path)
-            dst = backup_dir / f"{n:04d}_{src.name}"
             try:
-                if dst.exists():
-                    raise FileExistsError(f"backup already exists: {dst}")
-                shutil.copy2(src, dst)
-                if dst.stat().st_size != src.stat().st_size:
-                    raise OSError("backup size mismatch; file not modified")
-                mw.writerow([str(dst), str(src)])
-                mf.flush()
+                if mw:
+                    dst = backup_dir / f"{n:04d}_{src.name}"
+                    if dst.exists():
+                        raise FileExistsError(f"backup already exists: {dst}")
+                    shutil.copy2(src, dst)
+                    if dst.stat().st_size != src.stat().st_size:
+                        raise OSError("backup size mismatch; file not modified")
+                    mw.writerow([str(dst), str(src)])
+                    mf.flush()
                 write_bpm(src, r.bpm_text)
                 back, err = read_existing_bpm(src)
                 if err or back is None or parse_bpm(back) != parse_bpm(r.bpm_text):

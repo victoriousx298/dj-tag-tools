@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import contextlib
 import argparse
 import csv
 import json
@@ -406,25 +407,33 @@ def write_report(rows: list[Row], path: Path) -> None:
     print(f"Report written: {path}")
 
 
-def apply_writes(rows: list[Row], backup_dir: Path) -> tuple[int, int]:
+def apply_writes(rows: list[Row], backup_dir: Optional[Path]) -> tuple[int, int]:
     import shutil
     todo = [r for r in rows if r.action == "WRITE"]
     if not todo:
         print("\nNothing to write.")
         return 0, 0
-    backup_dir = bpm_tool.make_backup_dir(backup_dir)
-    print(f"\nBackups go to: {backup_dir}")
+    if backup_dir is not None:
+        backup_dir = bpm_tool.make_backup_dir(backup_dir)
+        print(f"\nBackups go to: {backup_dir}")
+        mf = (backup_dir / "manifest.csv").open("w", newline="", encoding="utf-8")
+    else:
+        print("\nNo backup (disabled).")
+        mf = contextlib.nullcontext()
     ok = failed = 0
-    with (backup_dir / "manifest.csv").open("w", newline="", encoding="utf-8") as mf:
-        mw = csv.writer(mf)
-        mw.writerow(["backup_file", "original_path"])
+    with mf:
+        mw = csv.writer(mf) if backup_dir is not None else None
+        if mw:
+            mw.writerow(["backup_file", "original_path"])
         for n, r in enumerate(todo, 1):
-            src, dst = Path(r.path), backup_dir / f"{n:04d}_{Path(r.path).name}"
+            src = Path(r.path)
             try:
-                shutil.copy2(src, dst)
-                if dst.stat().st_size != src.stat().st_size:
-                    raise OSError("backup size mismatch; file not modified")
-                mw.writerow([str(dst), str(src)]); mf.flush()
+                if mw:
+                    dst = backup_dir / f"{n:04d}_{src.name}"
+                    shutil.copy2(src, dst)
+                    if dst.stat().st_size != src.stat().st_size:
+                        raise OSError("backup size mismatch; file not modified")
+                    mw.writerow([str(dst), str(src)]); mf.flush()
                 write_genre(src, r.text)
                 back, err = read_genre(src)
                 if err or back != r.text:

@@ -219,7 +219,7 @@ def _editable_mp3(path) -> bool:
 def parse_selection(job: Job, sel: dict) -> dict:
     """Validate what the page sends; raise ValueError for anything not allowed."""
     ints = lambda v: {int(x) for x in v}
-    out = {"bpm": set(), "year": set(), "genre": {}, "cleanup": {}, "bpm_set": {}, "year_set": {}}
+    out = {"backup": bool(sel.get("backup")), "bpm": set(), "year": set(), "genre": {}, "cleanup": {}, "bpm_set": {}, "year_set": {}}
     n = len(job.entries)
     try:
         out["bpm"] = ints(sel.get("bpm", [])) if job.want_bpm else set()
@@ -272,7 +272,8 @@ def run_apply(job: Job, s: dict) -> None:
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         safe = re.sub(r"[^\w.-]+", "_", Path(job.name).stem)[:40] or "playlist"
         base = BACKUP_ROOT / f"{safe}_{stamp}"
-        job.backup_dir = str(base)
+        job.backup_dir = str(base) if s["backup"] else ""
+        sub = lambda name: base / name if s["backup"] else None
         if job.want_bpm:
             for r in job.bpm_rows:
                 if r.index in s["bpm_set"]:
@@ -298,13 +299,13 @@ def run_apply(job: Job, s: dict) -> None:
                     r.action, r.detail = "SKIP", "deselected"
         steps = []
         if job.want_cleanup:
-            steps.append(("Writing tag cleanup…", lambda: cleanup_tool.apply_writes(job.clean_rows, base / "cleanup")))
+            steps.append(("Writing tag cleanup…", lambda: cleanup_tool.apply_writes(job.clean_rows, sub("cleanup"))))
         if job.want_bpm:
-            steps.append(("Writing BPM tags…", lambda: bpm_tool.apply_writes(job.bpm_rows, base / "bpm")))
+            steps.append(("Writing BPM tags…", lambda: bpm_tool.apply_writes(job.bpm_rows, sub("bpm"))))
         if job.want_year:
-            steps.append(("Writing years…", lambda: year_tool.apply_writes(job.year_rows, base / "year")))
+            steps.append(("Writing years…", lambda: year_tool.apply_writes(job.year_rows, sub("year"))))
         if job.want_genre:
-            steps.append(("Writing genres…", lambda: genre_tool.apply_writes(job.genre_rows, base / "genre")))
+            steps.append(("Writing genres…", lambda: genre_tool.apply_writes(job.genre_rows, sub("genre"))))
         for msg, fn in steps:
             job.message = msg
             fn()

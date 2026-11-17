@@ -4,7 +4,7 @@ Tidy up new tracks before they go into Rekordbox. Everything runs **on your own 
 
 - **Import**: pick a folder of new WAV / MP3 files. WAVs become 320 kbps MP3s, the Artist tag is tidied ("A/B" becomes "A, B"), files are renamed `ARTIST - TITLE.mp3`, missing years are filled in. You see a preview table first; nothing changes until you press *Apply*.
 - **BPM & Fixes**: pick a Rekordbox playlist (or upload a playlist TXT) and copy Rekordbox's BPM, the year and MusicBrainz genres into the MP3 tags, with an optional artist/title cleanup.
-- Every changed MP3 is **backed up first** (folder `backups/`, deleted automatically after 30 days). Your Rekordbox database is only ever read, never written.
+- Tick **Make backup** (off by default) to back up every changed MP3 first (folder `backups/`, deleted automatically after 30 days). Your Rekordbox database is only ever read, never written.
 
 ## Install (first time, about 2 minutes)
 
